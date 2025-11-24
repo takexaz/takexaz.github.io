@@ -1,0 +1,42 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// list blog posts by reading content/blog/* (simple)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const blogDir = path.join(__dirname, '..', 'content', 'blog');
+let posts = [];
+try {
+  const files = fs.readdirSync(blogDir);
+  posts = files.filter(f => f.endsWith('.md')).map(f => {
+    const p = path.join(blogDir, f);
+    const text = fs.readFileSync(p, 'utf8');
+    const m = /---([\s\S]*?)---/.exec(text);
+    let meta = {};
+    if (m) {
+      // crude frontmatter parse for title & tags
+      const fm = m[1];
+      const titleM = /title:\s*(.+)/.exec(fm);
+      const dateM = /date:\s*(.+)/.exec(fm);
+      const tagsM = /tags:\s*\[(.*?)\]/.exec(fm);
+      meta.title = titleM ? titleM[1].trim().replace(/^["']|["']$/g,'') : f;
+      meta.date = dateM ? dateM[1].trim() : '';
+      meta.tags = tagsM ? tagsM[1].split(',').map(s=>s.trim().replace(/^["']|["']$/g,'')) : [];
+    }
+    return { file: f, meta };
+  });
+} catch(e) {
+  posts = [];
+}
+---
+<BaseLayout title="Home">
+  <h1>takexaz</h1>
+  <p>Welcome. 最新の投稿：</p>
+  <ul>
+    {posts.map(p => (
+      <li><a href={`/blog/${p.file.replace('.md','')}/`}>{p.meta.title}</a> ({p.meta.date})</li>
+    ))}
+  </ul>
+</BaseLayout>

@@ -1,0 +1,13 @@
+{
+  "name": "Astro (Docker)",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspaces/takexaz.github.io",
+  "forwardPorts": [4321],
+  "postCreateCommand": "npm install",
+  "remoteUser": "node",
+  "features": {
+  }
+}
