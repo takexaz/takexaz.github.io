@@ -4,17 +4,29 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// 型定義を追加
+interface PostMeta {
+  title: string;
+  date: string;
+  tags: string[];
+}
+
+interface Post {
+  file: string;
+  meta: PostMeta;
+}
+
 // list blog posts by reading content/blog/* (simple)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const blogDir = path.join(__dirname, '..', 'content', 'blog');
-let posts = [];
+let posts: Post[] = []; // 型を明示的に指定
 try {
   const files = fs.readdirSync(blogDir);
   posts = files.filter(f => f.endsWith('.md')).map(f => {
     const p = path.join(blogDir, f);
     const text = fs.readFileSync(p, 'utf8');
     const m = /---([\s\S]*?)---/.exec(text);
-    let meta = {};
+    let meta: PostMeta = { title: '', date: '', tags: [] }; // 型を明示的に指定
     if (m) {
       // crude frontmatter parse for title & tags
       const fm = m[1];
