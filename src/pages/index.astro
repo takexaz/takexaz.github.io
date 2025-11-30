@@ -1,54 +1,76 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import Layout from '~/layouts/Layout.astro'
+import { getSortedPosts } from '~/utils'
+import { getCollection, render } from 'astro:content'
+import PostPreview from '~/components/PostPreview.astro'
+import Pagination from '~/components/Pagination.astro'
+import BlockHeader from '~/components/BlockHeader.astro'
+import HomeBanner from '~/components/HomeBanner.astro'
+import siteConfig from '~/site.config'
+import TagsSection from '~/components/TagsSection.astro'
+import SeriesSection from '~/components/SeriesSection.astro'
 
-// 型定義を追加
-interface PostMeta {
-  title: string;
-  date: string;
-  tags: string[];
+const home = await getCollection('home')
+let HomeContent
+let homeAvatarImage
+let homeGithubCalendar
+if (home.length > 0) {
+  const homeEntry = home[0]
+  const { Content } = await render(homeEntry)
+  HomeContent = Content
+  homeAvatarImage = homeEntry.data.avatarImage
+  homeGithubCalendar = homeEntry.data.githubCalendar
 }
+const sortedPosts = await getSortedPosts()
+const postsHaveTags = sortedPosts.some(
+  (post) => post.data.tags && post.data.tags.length > 0,
+)
 
-interface Post {
-  file: string;
-  meta: PostMeta;
-}
-
-// list blog posts by reading content/blog/* (simple)
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const blogDir = path.join(__dirname, '..', 'content', 'blog');
-let posts: Post[] = []; // 型を明示的に指定
-try {
-  const files = fs.readdirSync(blogDir);
-  posts = files.filter(f => f.endsWith('.md')).map(f => {
-    const p = path.join(blogDir, f);
-    const text = fs.readFileSync(p, 'utf8');
-    const m = /---([\s\S]*?)---/.exec(text);
-    let meta: PostMeta = { title: '', date: '', tags: [] }; // 型を明示的に指定
-    if (m) {
-      // crude frontmatter parse for title & tags
-      const fm = m[1];
-      const titleM = /title:\s*(.+)/.exec(fm);
-      const dateM = /date:\s*(.+)/.exec(fm);
-      const tagsM = /tags:\s*\[(.*?)\]/.exec(fm);
-      meta.title = titleM ? titleM[1].trim().replace(/^["']|["']$/g,'') : f;
-      meta.date = dateM ? dateM[1].trim() : '';
-      meta.tags = tagsM ? tagsM[1].split(',').map(s=>s.trim().replace(/^["']|["']$/g,'')) : [];
-    }
-    return { file: f, meta };
-  });
-} catch(e) {
-  posts = [];
-}
+const postsHaveSeries = sortedPosts.some((post) => post.data.series)
 ---
-<BaseLayout title="Home">
-  <h1>takexaz</h1>
-  <p>Welcome. 最新の投稿：</p>
-  <ul>
-    {posts.map(p => (
-      <li><a href={`/blog/${p.file.replace('.md','')}/`}>{p.meta.title}</a> ({p.meta.date})</li>
-    ))}
-  </ul>
-</BaseLayout>
+
+<Layout>
+  {
+    HomeContent && (
+      <HomeBanner avatarImage={homeAvatarImage} githubCalendar={homeGithubCalendar}>
+        <HomeContent />
+      </HomeBanner>
+    )
+  }
+  {
+    postsHaveSeries && (
+      <section>
+        <BlockHeader>Series</BlockHeader>
+        <SeriesSection posts={sortedPosts} />
+      </section>
+    )
+  }
+  {
+    postsHaveTags && (
+      <section>
+        <BlockHeader>Tags</BlockHeader>
+        <TagsSection posts={sortedPosts} />
+      </section>
+    )
+  }
+  {
+    sortedPosts.length > 0 && (
+      <section>
+        <BlockHeader>Latest Posts</BlockHeader>
+        {sortedPosts
+          .reverse()
+          .slice(0, Math.floor(siteConfig.pageSize / 2))
+          .map((post) => (
+            <PostPreview post={post} />
+          ))}
+        <Pagination nextLink="/posts" nextText="Archive" />
+      </section>
+    )
+  }
+</Layout>
+
+<style is:global>
+  a.heading-anchor {
+    display: none !important;
+  }
+</style>
